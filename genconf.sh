@@ -3,6 +3,8 @@ RED="31m"
 GREEN="32m"
 YELLOW="33m"
 BLUE="36m"
+SED=$(which sed)
+CP=$(which cp)
 
 usage="$(basename "$0") [-h] [-m -d -p]\n\n
       Please use the following options:\n\n
@@ -52,23 +54,29 @@ if [[ -z $V2RAY_DOMAIN ]]; then
 fi
 
 let PORT=$RANDOM+10000
-PATH=$(/bin/cat /proc/sys/kernel/random/uuid)
-UUID=$(/bin/cat /proc/sys/kernel/random/uuid)
+
+if [[ "$OSTYPE" == *"darwin"*  ]]; then
+  UUID=$(uuidgen | tr "[:upper:]" "[:lower:]")
+  PATH=$(uuidgen | tr "[:upper:]" "[:lower:]")
+else
+  PATH=$(/bin/cat /proc/sys/kernel/random/uuid)
+  UUID=$(/bin/cat /proc/sys/kernel/random/uuid)
+fi
 
 if [[ ! -d "config" ]]; then
   /bin/mkdir "config"
 fi
 
-/bin/sed "s/{PORT}/$PORT/; s/{UUID}/$UUID/; s/{PATH}/$PATH/" files/v2ray-server.template > config/config.json
-/bin/sed "s/{URI}/$V2RAY_DOMAIN/; s/{PATH}/$PATH/; s/{UUID}/$UUID/" files/v2ray-client.template > config/client.json
-/bin/sed "s/{URI}/$V2RAY_DOMAIN/; s/{EMAIL}/$EMAIL/; s/{PATH}/$PATH/; s/{PORT}/$PORT/" files/caddyfile.template > config/Caddyfile
-/bin/cp config/config.json build/v2ray-tls/
-/bin/cp config/Caddyfile build/web-server/
+$SED "s/{PORT}/$PORT/; s/{UUID}/$UUID/; s/{PATH}/$PATH/" files/v2ray-server.template > config/config.json
+$SED "s/{URI}/$V2RAY_DOMAIN/; s/{PATH}/$PATH/; s/{UUID}/$UUID/" files/v2ray-client.template > config/client.json
+$SED "s/{URI}/$V2RAY_DOMAIN/; s/{EMAIL}/$EMAIL/; s/{PATH}/$PATH/; s/{PORT}/$PORT/" files/caddyfile.template > config/Caddyfile
+$CP config/config.json build/v2ray-tls/
+$CP config/Caddyfile build/web-server/
 
 if [[ -z $PLUGINS ]]; then
-  /bin/sed "s/{PLUGINS}//" files/getcaddy.template > build/web-server/getcaddy.sh
+  $SED "s/{PLUGINS}//" files/getcaddy.template > build/web-server/getcaddy.sh
 else
-  /bin/sed "s/{PLUGINS}/plugins=$PLUGINS/" files/getcaddy.template > build/web-server/getcaddy.sh
+  $SED "s/{PLUGINS}/plugins=$PLUGINS/" files/getcaddy.template > build/web-server/getcaddy.sh
 fi
 
 colorEcho ${GREEN} "Please use $(pwd)/config/client.json to configure your client."
